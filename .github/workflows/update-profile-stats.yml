@@ -12,14 +12,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get Profile Stats
         run: |
           # Get contribution stats
-          contributions=$(git rev-list --count --since='30 days ago' pdostal/main)
+          contributions=$(git rev-list --count --since='30 days ago' HEAD)
           profile_views=$(curl -s https://api.github.com/users/pdostal | jq '.followers')
           language_usage=$(curl -s https://api.github.com/users/pdostal/repos?per_page=100 | jq -r '.[] | .language' | sort | uniq -c | sort -r | head -n 5)
+          echo "contributions=$contributions" >> "$GITHUB_ENV"
+          echo "profile_views=$profile_views" >> "$GITHUB_ENV"
+          {
+            echo 'language_usage<<EOF'
+            echo "$language_usage"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - name: Update README
         run: |
@@ -34,4 +43,4 @@ jobs:
           git config --local user.name 'GitHub Action'
           git add README.md
           git commit -m 'Update profile stats' || echo 'No changes to commit'
-          git push
+          git push origin main
