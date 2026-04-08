@@ -1,0 +1,34 @@
+name: Update Profile Stats
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
+
+jobs:
+  update-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Get Profile Stats
+        run: |
+          # Get contribution stats
+          contributions=$(git rev-list --count --since='30 days ago' pdostal/main)
+          profile_views=$(curl -s https://api.github.com/users/pdostal | jq '.followers')
+          language_usage=$(curl -s https://api.github.com/users/pdostal/repos?per_page=100 | jq -r '.[] | .language' | sort | uniq -c | sort -r | head -n 5)
+
+      - name: Update README
+        run: |
+          echo "# pdostal's Profile\n" > README.md
+          echo "\n## Contributions: $contributions" >> README.md
+          echo "\n## Profile Views: $profile_views" >> README.md
+          echo "\n## Top Languages:\n$language_usage" >> README.md
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email 'action@github.com'
+          git config --local user.name 'GitHub Action'
+          git add README.md
+          git commit -m 'Update profile stats' || echo 'No changes to commit'
+          git push
