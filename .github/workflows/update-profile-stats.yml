@@ -1,46 +1,23 @@
-name: Update Profile Stats
+name: Collect GitHub Stats
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  push:
-    branches:
-      - main
+    - cron: '0 0 * * *'  # Run daily at midnight
+  workflow_dispatch:      # Allow manual trigger
 
 jobs:
-  update-stats:
+  collect-stats:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Collect GitHub Stats
+        uses: LukeHagar/stats-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.USER_PAT }}
+
+      - name: Commit stats
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          fetch-depth: 0
-
-      - name: Get Profile Stats
-        run: |
-          # Get contribution stats
-          contributions=$(git rev-list --count --since='30 days ago' HEAD)
-          profile_views=$(curl -s https://api.github.com/users/pdostal | jq '.followers')
-          language_usage=$(curl -s https://api.github.com/users/pdostal/repos?per_page=100 | jq -r '.[] | .language' | sort | uniq -c | sort -r | head -n 5)
-          echo "contributions=$contributions" >> "$GITHUB_ENV"
-          echo "profile_views=$profile_views" >> "$GITHUB_ENV"
-          {
-            echo 'language_usage<<EOF'
-            echo "$language_usage"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-
-      - name: Update README
-        run: |
-          echo "# pdostal's Profile\n" > README.md
-          echo "\n## Contributions: $contributions" >> README.md
-          echo "\n## Profile Views: $profile_views" >> README.md
-          echo "\n## Top Languages:\n$language_usage" >> README.md
-
-      - name: Commit and Push Changes
-        run: |
-          git config --local user.email 'action@github.com'
-          git config --local user.name 'GitHub Action'
-          git add README.md
-          git commit -m 'Update profile stats' || echo 'No changes to commit'
-          git push origin main
+          commit_message: "chore: update github stats"
+          file_pattern: github-user-stats.json
